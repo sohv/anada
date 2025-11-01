@@ -311,7 +311,8 @@ class REPL:
         if links:
             self.console.print(f"\n[bold cyan]Links in '{title}':[/bold cyan]\n")
             for link in links:
-                self.console.print(f"  [[{link}]]")
+                # Use print() to avoid Rich markup interpretation
+                print(f"  [[{link}]]")
         else:
             self.console.print(f"[dim]No links found in '{title}'[/dim]")
     
@@ -325,7 +326,8 @@ class REPL:
         if backlinks:
             self.console.print(f"\n[bold cyan]Backlinks to '{title}':[/bold cyan]\n")
             for link in backlinks:
-                self.console.print(f"  [[{link}]]")
+                # Use print() to avoid Rich markup interpretation
+                print(f"  [[{link}]]")
         else:
             self.console.print(f"[dim]No backlinks found for '{title}'[/dim]")
     

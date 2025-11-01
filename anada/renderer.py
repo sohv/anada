@@ -79,7 +79,6 @@ class MarkdownRenderer:
         table.add_column("Title", style="cyan", width=30)
         table.add_column("Modified", style="dim", width=20)
         table.add_column("Size", style="dim", width=10)
-        table.add_column("Links", justify="center", style="yellow", width=8)
         
         for note in notes:
             modified_str = note['modified'].strftime('%Y-%m-%d %H:%M')
@@ -88,8 +87,7 @@ class MarkdownRenderer:
             table.add_row(
                 note['title'][:28] + '...' if len(note['title']) > 28 else note['title'],
                 modified_str, 
-                size_str,
-                "-"  # Remove link counting for now
+                size_str
             )
         
         self.console.print(table)

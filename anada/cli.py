@@ -120,7 +120,8 @@ def link(title):
     if links:
         console.print(f"\n[bold cyan]Links in '{title}':[/bold cyan]\n")
         for link_title in links:
-            console.print(f"  [[{link_title}]]")
+            # Use print() to avoid Rich markup interpretation
+            print(f"  [[{link_title}]]")
     else:
         console.print(f"[dim]No links found in '{title}'[/dim]")
 
@@ -137,7 +138,8 @@ def backlinks(title):
     if backlinks:
         console.print(f"\n[bold cyan]Backlinks to '{title}':[/bold cyan]\n")
         for link in backlinks:
-            console.print(f"  [[{link}]]")
+            # Use print() to avoid Rich markup interpretation
+            print(f"  [[{link}]]")
     else:
         console.print(f"[dim]No backlinks found for '{title}'[/dim]")
 
