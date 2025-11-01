@@ -40,21 +40,11 @@ class MarkdownRenderer:
         return text
     
     def render_note(self, title: str, content: str, backlinks: list = None):
-        """Render a complete note with title, content, and backlinks."""
-        # Use rich's Markdown renderer
+        """Render a complete note with title and content."""
+        # Use rich's Markdown renderer for just the content
         markdown = Markdown(content)
         
-        # Create panel with title
-        panel_content = []
-        
-        if backlinks:
-            backlinks_text = "\n\n**Backlinks:**\n"
-            for link in backlinks:
-                backlinks_text += f"- [[{link}]]\n"
-            markdown = Markdown(content + backlinks_text)
-        
-        # For now, use rich's built-in Markdown which handles most cases
-        # We'll enhance with custom theming if needed
+        # Render without backlinks - use dedicated backlinks command instead
         self.console.print(markdown)
     
     def render_list(self, notes: list):

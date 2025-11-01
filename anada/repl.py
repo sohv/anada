@@ -248,13 +248,11 @@ class REPL:
             self.console.print(f"[red]Note not found: {title}[/red]")
             return
         
-        backlinks = self.note_manager.get_backlinks(title)
-        
         # Print title
         self.console.print(f"\n[bold cyan]# {title}[/bold cyan]\n")
         
-        # Render content
-        self.renderer.render_note(title, content, backlinks)
+        # Render content only - no automatic backlinks
+        self.renderer.render_note(title, content)
         
         # Add simple footer with quick commands
         self.console.print(f"[dim]edit {title} | link {title} | delete {title}[/dim]")

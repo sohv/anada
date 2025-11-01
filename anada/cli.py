@@ -57,8 +57,8 @@ def show(title):
         console.print(f"[red]Note not found: {title}[/red]")
         sys.exit(1)
     
-    backlinks = manager.get_backlinks(title)
-    renderer.render_note(title, content, backlinks)
+    # Render content only - no automatic backlinks
+    renderer.render_note(title, content)
 
 
 @cli.command()
