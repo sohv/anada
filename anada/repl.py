@@ -6,8 +6,14 @@ from typing import List, Optional
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
+from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
+from prompt_toolkit.formatted_text import HTML
 from rich.console import Console
 from rich.panel import Panel
+from rich.live import Live
+from rich.layout import Layout
+from rich.table import Table
+from rich import box
 
 from anada.config import Config
 from anada.note_manager import NoteManager
@@ -27,6 +33,12 @@ class REPL:
         )
         self.session = None
         self.running = True
+        self.interactive_mode = False
+        self.status_info = {
+            'total_notes': 0,
+            'last_modified': 'Never',
+            'current_theme': self.config.theme
+        }
     
     def _setup_session(self):
         """Setup prompt session with history and autocompletion."""
@@ -37,7 +49,8 @@ class REPL:
         note_titles = [note['title'] for note in notes]
         
         commands = ['new', 'edit', 'open', 'show', 'delete', 'list', 'search', 
-                   'link', 'backlinks', 'theme', 'editor', 'help', 'quit', 'exit', 'clear']
+                   'link', 'backlinks', 'theme', 'editor', 'help', 'quit', 'exit', 'clear',
+                   'menu', 'live-search', 'status', 'interactive', 'user']
         completer = WordCompleter(commands + note_titles, ignore_case=True)
         
         self.session = PromptSession(
@@ -45,18 +58,34 @@ class REPL:
             completer=completer,
             complete_while_typing=True,
         )
+        
+        # Update status info
+        self._update_status_info()
     
     def run(self):
         """Start the REPL."""
         self._setup_session()
         
+        # Get or prompt for user name
+        user_name = self.config.prompt_for_user_name()
+        
         # Welcome message
         notes_path = self.config.notes_dir
+        if user_name:
+            greeting = f"Welcome back, {user_name}!"
+        else:
+            greeting = "Welcome to Anada!"
+            
         welcome = Panel.fit(
             f"[bold cyan]Anada[/bold cyan] - Terminal-based Obsidian-like notes\n"
+            f"{greeting}\n"
             f"Notes directory: [dim]{notes_path}[/dim]\n"
             f"All notes are [green]persistent[/green] across sessions!\n\n"
-            f"Type [dim]help[/dim] for commands or [dim]quit[/dim] to exit.",
+            f"[bold yellow]Interactive Features:[/bold yellow]\n"
+            f"• [green]menu[/green] - Interactive command menu\n"
+            f"• [green]live-search[/green] - Real-time search with preview\n"
+            f"• [green]status[/green] - Live dashboard\n\n"
+            f"Type [dim]help[/dim] for all commands or [dim]quit[/dim] to exit.",
             border_style="cyan"
         )
         self.console.print(welcome)
@@ -89,6 +118,14 @@ class REPL:
             self.running = False
         elif cmd == 'clear':
             os.system('clear' if os.name != 'nt' else 'cls')
+        elif cmd == 'menu':
+            self._cmd_interactive_menu()
+        elif cmd == 'live-search':
+            self._cmd_live_search()
+        elif cmd == 'status':
+            self._cmd_show_status()
+        elif cmd == 'interactive':
+            self._cmd_toggle_interactive()
         elif cmd == 'new':
             self._cmd_new(args)
         elif cmd == 'edit' or cmd == 'open':
@@ -109,6 +146,8 @@ class REPL:
             self._cmd_theme(args)
         elif cmd == 'editor':
             self._cmd_editor(args)
+        elif cmd == 'user':
+            self._cmd_user(args)
         else:
             # Try to show note if it's a note title
             if self.note_manager.exists(command):
@@ -132,11 +171,19 @@ class REPL:
   [cyan]search <query>[/cyan]       Search notes by content
   [cyan]link <title>[/cyan]         Show links in a note
   [cyan]backlinks <title>[/cyan]    Show backlinks to a note
-  [cyan]theme <name>[/cyan]         Change theme (default, dark, nord)
+  [cyan]theme <name>[/cyan]         Change theme (default, dark, nord, cyan, brown, grey)
   [cyan]editor [name][/cyan]        Show or set editor (nano, vim, etc.)
+  [cyan]user [name][/cyan]          Show or set user name
   [cyan]clear[/cyan]                Clear screen
   [cyan]help[/cyan]                 Show this help
   [cyan]quit[/cyan]                 Exit Anada
+
+[bold green]Interactive Features:[/bold green]
+
+  [green]menu[/green]                   Interactive command menu
+  [green]live-search[/green]            Real-time search with preview
+  [green]status[/green]                Show live statistics
+  [green]interactive[/green]           Toggle interactive mode
 
 [dim]Tip: Type a note title directly to view it[/dim]
 
@@ -208,6 +255,9 @@ class REPL:
         
         # Render content
         self.renderer.render_note(title, content, backlinks)
+        
+        # Add simple footer with quick commands
+        self.console.print(f"[dim]edit {title} | link {title} | delete {title}[/dim]")
         self.console.print()
     
     def _cmd_delete(self, title: str):
@@ -283,7 +333,7 @@ class REPL:
         """Change theme."""
         if not theme_name:
             self.console.print("[red]Usage: theme <name>[/red]")
-            self.console.print("[dim]Available themes: default, dark, nord[/dim]")
+            self.console.print("[dim]Available themes: default, dark, nord, cyan, brown, grey[/dim]")
             return
         
         themes = self.config.get('themes', {})
@@ -296,7 +346,7 @@ class REPL:
             self.console.print(f"[green]Theme changed to: {theme_name}[/green]")
         else:
             self.console.print(f"[red]Unknown theme: {theme_name}[/red]")
-            self.console.print("[dim]Available themes: default, dark, nord[/dim]")
+            self.console.print("[dim]Available themes: default, dark, nord, cyan, brown, grey[/dim]")
     
     def _cmd_editor(self, editor_name: str = None):
         """Show or set the editor."""
@@ -339,4 +389,255 @@ class REPL:
             else:
                 self.console.print(f"[red]Editor '{editor_name}' not found in PATH[/red]")
                 self.console.print("[dim]Make sure the editor is installed and available in your PATH[/dim]")
+    
+    def _cmd_user(self, user_name: str = None):
+        """Show or set the user name."""
+        if not user_name:
+            # Show current user
+            current_user = self.config.user_name
+            if current_user:
+                self.console.print(f"\n[bold cyan]Current User:[/bold cyan] [yellow]{current_user}[/yellow]")
+            else:
+                self.console.print("\n[dim]No user name set[/dim]")
+            self.console.print(f"\n[dim]To change: [cyan]user \"Your Name\"[/cyan][/dim]")
+        else:
+            # Set new user name
+            self.config.set_user_name(user_name)
+            self.console.print(f"[green]User name set to: {user_name}[/green]")
+            self.console.print("[dim]You'll see a personalized welcome message next time![/dim]")
+    
+    def _update_status_info(self):
+        """Update status information."""
+        notes = self.note_manager.list_all()
+        self.status_info['total_notes'] = len(notes)
+        if notes:
+            latest = max(notes, key=lambda x: x['modified'])
+            self.status_info['last_modified'] = latest['modified'].strftime('%Y-%m-%d %H:%M')
+        else:
+            self.status_info['last_modified'] = 'Never'
+        self.status_info['current_theme'] = self.config.theme
+    
+    def _cmd_interactive_menu(self):
+        """Show interactive command menu."""
+        try:
+            # Create menu options
+            choices = [
+                ('new', 'Create a new note'),
+                ('list', 'List all notes'),
+                ('search', 'Search notes'),
+                ('live-search', 'Interactive search with preview'),
+                ('theme_menu', 'Change theme'),
+                ('editor_menu', 'Configure editor'),
+                ('status', 'Show status information'),
+                ('help', 'Show help'),
+                ('quit', 'Exit Anada')
+            ]
+            
+            result = radiolist_dialog(
+                title="Anada Interactive Menu",
+                text="Select an action:",
+                values=choices,
+                style="class:radiolist"
+            ).run()
+            
+            if result:
+                if result == 'new':
+                    title = input_dialog(
+                        title="Create New Note",
+                        text="Enter note title:"
+                    ).run()
+                    if title:
+                        self._cmd_new(title)
+                elif result == 'search':
+                    query = input_dialog(
+                        title="Search Notes",
+                        text="Enter search query:"
+                    ).run()
+                    if query:
+                        self._cmd_search(query)
+                elif result == 'theme_menu':
+                    self._show_theme_menu()
+                elif result == 'editor_menu':
+                    self._show_editor_menu()
+                else:
+                    # Execute the command directly
+                    self._process_command(result)
+        except Exception as e:
+            self.console.print(f"[yellow]Interactive menu not available: {e}[/yellow]")
+            self.console.print("[dim]Try using individual commands instead[/dim]")
+    
+    def _show_theme_menu(self):
+        """Show theme selection menu."""
+        try:
+            themes = list(self.config.get('themes', {}).keys())
+            choices = [(theme, f"Switch to {theme} theme") for theme in themes]
+            
+            result = radiolist_dialog(
+                title="Select Theme",
+                text=f"Current theme: {self.config.theme}",
+                values=choices
+            ).run()
+            
+            if result:
+                self._cmd_theme(result)
+        except Exception as e:
+            self.console.print(f"[yellow]Theme menu not available: {e}[/yellow]")
+            self.console.print("[dim]Use 'theme <name>' command instead[/dim]")
+    
+    def _show_editor_menu(self):
+        """Show editor selection menu."""
+        try:
+            editors = [
+                ('nano', 'Nano - Simple and beginner-friendly'),
+                ('vim', 'Vim - Powerful text editor'),
+                ('code', 'VS Code - Modern editor'),
+                ('emacs', 'Emacs - Extensible editor'),
+                ('micro', 'Micro - Modern terminal editor')
+            ]
+            
+            result = radiolist_dialog(
+                title="Select Editor",
+                text=f"Current editor: {self.config.editor}",
+                values=editors
+            ).run()
+            
+            if result:
+                self._cmd_editor(result)
+        except Exception as e:
+            self.console.print(f"[yellow]Editor menu not available: {e}[/yellow]")
+            self.console.print("[dim]Use 'editor <name>' command instead[/dim]")
+    
+    def _cmd_live_search(self):
+        """Interactive live search with note preview."""
+        self.console.print("[bold cyan]🔍 Live Search Mode[/bold cyan]")
+        self.console.print("[dim]Type to search, press Enter to view note, Ctrl+C to exit[/dim]\n")
+        
+        try:
+            query = ""
+            while True:
+                try:
+                    if query:
+                        # Show search prompt with current query
+                        user_input = self.session.prompt(f"search ({query})> ")
+                    else:
+                        user_input = self.session.prompt("search> ")
+                    
+                    if not user_input.strip():
+                        if query:
+                            # Show current results
+                            results = self.note_manager.search(query)
+                            self._show_live_preview(results, query)
+                        continue
+                    
+                    # Check if it's a command to select a note
+                    if user_input.startswith('show '):
+                        title = user_input[5:].strip()
+                        if self.note_manager.exists(title):
+                            self._cmd_show(title)
+                        else:
+                            self.console.print(f"[red]Note not found: {title}[/red]")
+                            self.console.print("[dim]Available notes can be seen in the search results above[/dim]")
+                        continue
+                    elif user_input == 'exit' or user_input == 'quit':
+                        break
+                    elif user_input == 'clear':
+                        query = ""
+                        os.system('clear' if os.name != 'nt' else 'cls')
+                        self.console.print("[bold cyan]🔍 Live Search Mode[/bold cyan]")
+                        continue
+                    
+                    # Update search query
+                    query = user_input
+                    results = self.note_manager.search(query)
+                    self._show_live_preview(results, query)
+                    
+                except KeyboardInterrupt:
+                    break
+                    
+        except Exception as e:
+            self.console.print(f"[red]Live search error: {e}[/red]")
+        
+        self.console.print("\n[dim]Exited live search mode[/dim]")
+    
+    def _show_live_preview(self, results, query):
+        """Show live search results with preview."""
+        if not results:
+            self.console.print(f"[dim]No results for '{query}'[/dim]")
+            return
+        
+        # Create a table for results
+        table = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan")
+        table.add_column("Note", style="cyan", width=25)
+        table.add_column("Preview", style="dim", width=50)
+        table.add_column("Matches", justify="center", style="green", width=8)
+        
+        for i, result in enumerate(results[:5]):  # Show top 5 results
+            preview = result['snippet'][:80] + '...' if len(result['snippet']) > 80 else result['snippet']
+            # Highlight the query in preview
+            preview = preview.replace(query, f"[bold yellow]{query}[/bold yellow]")
+            table.add_row(
+                result['title'][:25] + '...' if len(result['title']) > 25 else result['title'],
+                preview,
+                str(result['matches'])
+            )
+        
+        self.console.print(table)
+        if len(results) > 5:
+            self.console.print(f"[dim]... and {len(results) - 5} more results[/dim]")
+        
+        self.console.print(f"\n[dim]Type 'show <note_title>' to view a note, 'clear' to reset, or Ctrl+C to exit[/dim]")
+    
+    def _cmd_show_status(self):
+        """Show live status information."""
+        self._update_status_info()
+        
+        # Create status panel
+        layout = Layout()
+        
+        # Status table
+        status_table = Table(box=box.ROUNDED, show_header=False, title="Anada Status")
+        status_table.add_column("Metric", style="cyan", width=20)
+        status_table.add_column("Value", style="bright_white", width=30)
+        
+        status_table.add_row("Total Notes", str(self.status_info['total_notes']))
+        status_table.add_row("Last Modified", self.status_info['last_modified'])
+        status_table.add_row("Current Theme", self.status_info['current_theme'])
+        status_table.add_row("Editor", self.config.editor)
+        status_table.add_row("Notes Directory", str(self.config.notes_dir))
+        
+        # Recent notes table
+        notes = self.note_manager.list_all()
+        recent_table = Table(box=box.ROUNDED, show_header=True, title="Recent Notes")
+        recent_table.add_column("Note", style="cyan", width=25)
+        recent_table.add_column("Modified", style="dim", width=20)
+        recent_table.add_column("Size", style="dim", width=10)
+        
+        for note in notes[:5]:  # Show 5 most recent
+            recent_table.add_row(
+                note['title'][:22] + '...' if len(note['title']) > 22 else note['title'],
+                note['modified'].strftime('%m-%d %H:%M'),
+                f"{note['size']} B"
+            )
+        
+        # Display both tables
+        self.console.print(status_table)
+        self.console.print()
+        if notes:
+            self.console.print(recent_table)
+        else:
+            self.console.print("[dim]No notes created yet. Use 'new <title>' to create your first note![/dim]")
+    
+    def _cmd_toggle_interactive(self):
+        """Toggle interactive mode features."""
+        self.interactive_mode = not self.interactive_mode
+        if self.interactive_mode:
+            self.console.print("[bold green]Interactive mode enabled![/bold green]")
+            self.console.print("[dim]Enhanced features are now active. Try 'menu', 'live-search', or 'status'[/dim]")
+        else:
+            self.console.print("[dim]Interactive mode disabled[/dim]")
+    
+    def _cmd_live_search(self):
+        """Interactive live search with note preview."""
+        self.console.print("[bold cyan]Live Search Mode[/bold cyan]")
+        self.console.print("[dim]Type to search, press Enter to view note, Ctrl+C to exit[/dim]\n")
 

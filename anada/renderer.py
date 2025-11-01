@@ -58,39 +58,78 @@ class MarkdownRenderer:
         self.console.print(markdown)
     
     def render_list(self, notes: list):
-        """Render a list of notes."""
+        """Render a list of notes with enhanced styling."""
+        if not notes:
+            empty_panel = Panel.fit(
+                "[dim]No notes found[/dim]\n\n"
+                "[cyan]Get started:[/cyan]\n"
+                "• Type [green]new \"my first note\"[/green] to create a note\n"
+                "• Try [green]menu[/green] for interactive commands\n"
+                "• Use [green]help[/green] to see all options",
+                border_style="yellow",
+                title="Notes"
+            )
+            self.console.print(empty_panel)
+            return
+        
         from rich.table import Table
         from rich import box
         
-        table = Table(box=box.SIMPLE, show_header=True, header_style="bold cyan")
-        table.add_column("Title", style="cyan")
-        table.add_column("Modified", style="dim")
-        table.add_column("Size", style="dim")
+        table = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan", title=f"Notes ({len(notes)} total)")
+        table.add_column("Title", style="cyan", width=30)
+        table.add_column("Modified", style="dim", width=20)
+        table.add_column("Size", style="dim", width=10)
+        table.add_column("Links", justify="center", style="yellow", width=8)
         
         for note in notes:
             modified_str = note['modified'].strftime('%Y-%m-%d %H:%M')
-            size_str = f"{note['size']} bytes"
-            table.add_row(note['title'], modified_str, size_str)
+            size_str = f"{note['size']} B"
+            
+            table.add_row(
+                note['title'][:28] + '...' if len(note['title']) > 28 else note['title'],
+                modified_str, 
+                size_str,
+                "-"  # Remove link counting for now
+            )
         
         self.console.print(table)
+        self.console.print(f"\n[dim]Use [cyan]show <title>[/cyan] to view a note or [cyan]live-search[/cyan] for interactive search[/dim]")
     
     def render_search_results(self, results: list, query: str):
-        """Render search results."""
+        """Render search results with enhanced styling."""
+        if not results:
+            no_results_panel = Panel.fit(
+                f"[dim]No results found for '[cyan]{query}[/cyan]'[/dim]\n\n"
+                "[cyan]Try:[/cyan]\n"
+                "• Different keywords\n"
+                "• [green]live-search[/green] for interactive search\n"
+                "• [green]list[/green] to see all notes",
+                border_style="yellow",
+                title="Search Results"
+            )
+            self.console.print(no_results_panel)
+            return
+        
         from rich.table import Table
         from rich import box
         
-        if not results:
-            self.console.print(f"[dim]No results found for '{query}'[/dim]")
-            return
-        
-        table = Table(box=box.SIMPLE, show_header=True, header_style="bold cyan")
-        table.add_column("Title", style="cyan")
-        table.add_column("Snippet", style="dim")
-        table.add_column("Matches", justify="right", style="dim")
+        table = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan", 
+                     title=f"Search Results for '{query}' ({len(results)} found)")
+        table.add_column("Note", style="cyan", width=25)
+        table.add_column("Preview", style="dim", width=50)
+        table.add_column("Matches", justify="center", style="green", width=8)
         
         for result in results:
             snippet = result['snippet'][:100] + '...' if len(result['snippet']) > 100 else result['snippet']
-            table.add_row(result['title'], snippet, str(result['matches']))
+            # Highlight query in snippet
+            highlighted_snippet = snippet.replace(query, f"[bold yellow]{query}[/bold yellow]")
+            
+            table.add_row(
+                result['title'][:22] + '...' if len(result['title']) > 22 else result['title'], 
+                highlighted_snippet, 
+                str(result['matches'])
+            )
         
         self.console.print(table)
+        self.console.print(f"\n[dim]Use [cyan]show <title>[/cyan] to view a note or try [cyan]live-search[/cyan] for real-time results[/dim]")
 

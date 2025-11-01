@@ -3,7 +3,7 @@
 import os
 import yaml
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 class Config:
@@ -101,4 +101,25 @@ class Config:
         theme_name = self.theme
         themes = self._config.get('themes', {})
         return themes.get(theme_name, themes.get('default', {}))
+    
+    @property
+    def user_name(self) -> Optional[str]:
+        """Get the configured user name."""
+        return self._config.get('user_name')
+    
+    def set_user_name(self, name: str):
+        """Set the user name."""
+        self._config['user_name'] = name
+        self.save()
+    
+    def prompt_for_user_name(self) -> str:
+        """Prompt user for their name if not set."""
+        if not self.user_name:
+            print("\nWelcome to Anada! Let's personalize your experience.")
+            name = input("What's your name? ").strip()
+            if name:
+                self.set_user_name(name)
+                print(f"Nice to meet you, {name}!")
+                return name
+        return self.user_name
 

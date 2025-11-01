@@ -1,20 +1,29 @@
-# Anada - Terminal-based Obsidian-like Notes
+# Anada
 
-A lightweight, terminal-first note-taking tool with Markdown support and bi-directional linking.
+A lightweight, terminal-first note-taking tool with Markdown support and bi-directional linking. 
 
-## Features
+<!--
+Anada is Obsidian distilled for the terminal: fast, lightweight, scriptable, and distraction-free — perfect for developers and terminal lovers who want a Markdown-based PKM without leaving the CLI.-->
 
-- ✅ **CRUD Operations** - Create, read, update, and delete Markdown notes
-- ✅ **Persistent Storage** - All notes saved to disk (`~/.notes/notes/`) and persist across sessions
-- ✅ **Bi-directional Links** - `[[note]]` style links with automatic backlinks
-- ✅ **Full-text Search** - Search notes by content
-- ✅ **Interactive REPL** - Command mode with autocompletion and history
-- ✅ **Theming** - Multiple color themes (default, dark, nord)
-- ✅ **Lightweight** - Minimal dependencies, runs everywhere
+[![PyPI version](https://badge.fury.io/py/anada.svg)](https://pypi.org/project/anada/) 
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
+>NOTE: A detailed documentation is under development and will be available soon.
+
+## Why Anada?
+
+- **Terminal-first & Lightweight** – Fast, distraction-free, runs entirely in the terminal.
+- **Plain Markdown Notes** – Fully persistent `.md` files accessible with any editor.
+- **Interactive CLI & REPL** – Create, edit, search, and link notes from the command line.
+- **Bi-directional Linking** – [[note]] style links with automatic backlinks.
+- **Customizable Themes & Editor** – Pick your favorite terminal theme and editor.
+- **Developer-friendly** – Scriptable, works with Git, perfect for terminal workflows.
 
 ## Installation
 
-### Install from PyPI (Recommended)
+### Install from PyPI
 
 ```bash
 pip install anada
@@ -31,14 +40,14 @@ anada list  # List all notes
 ### Install from GitHub
 
 ```bash
-pip install git+https://github.com/yourusername/anada.git
+pip install git+https://github.com/sohv/anada.git
 ```
 
 ### Install from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/anada.git
+git clone https://github.com/sohv/anada.git
 cd anada
 
 # Install dependencies and package
@@ -51,17 +60,27 @@ pip install .
 ### Development Installation
 
 ```bash
-git clone https://github.com/yourusername/anada.git
+git clone https://github.com/sohv/anada.git
 cd anada
 pip install -r requirements.txt
 pip install -e .
 ```
 
-For deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+For deployment instructions, see [deployment](deploy.md).
+
+# Features
+
+- **CRUD Operations** - Create, read, update, and delete Markdown notes
+- **Persistent Storage** - All notes saved to disk (`~/.notes/notes/`) and persist across sessions
+- **Bi-directional Links** - `[[note]]` style links with automatic backlinks
+- **Full-text Search** - Search notes by content
+- **Interactive REPL** - Command mode with autocompletion and history
+- **Theming** - Multiple color themes (default, dark, nord)
+- **Lightweight** - Minimal dependencies, runs everywhere
 
 ## Usage
 
-### Interactive Mode (Recommended)
+### Interactive Mode
 
 ```bash
 python main.py
@@ -203,10 +222,10 @@ When you view a note, Anada automatically shows:
 ```
 
 **Important:** All notes are saved to `~/.notes/notes/` directory on your filesystem. This means:
-- ✅ Notes persist across terminal sessions
-- ✅ Notes are saved immediately when created/edited
-- ✅ You can access notes even after closing and reopening the terminal
-- ✅ Notes are plain Markdown files - you can edit them with any text editor
+- Notes persist across terminal sessions
+- Notes are saved immediately when created/edited
+- You can access notes even after closing and reopening the terminal
+- Notes are plain Markdown files - you can edit them with any text editor
 
 ## Tech Stack
 
@@ -255,10 +274,6 @@ Theme changed to: nord
 - Sync/export to Obsidian folder
 - Plugin hooks for extensibility
 - Enhanced Markdown rendering with syntax highlighting
-
-## License
-
-MIT
 
 ## Contributing
 
